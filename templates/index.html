@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Secure DLT Inventory System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        h1 {
+            color: #b00020;
+        }
+
+        h2 {
+            margin-top: 30px;
+            color: #333;
+        }
+
+        label {
+            display: inline-block;
+            width: 130px;
+            margin-bottom: 10px;
+        }
+
+        input, select {
+            padding: 6px;
+            width: 200px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #b00020;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .box {
+            background-color: #eeeeee;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            overflow-wrap: break-word;
+        }
+
+        .accept {
+            color: green;
+            font-weight: bold;
+        }
+
+        .reject {
+            color: red;
+            font-weight: bold;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #999;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background-color: #ddd;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>Secure DLT-Based Inventory Management System</h1>
+
+    <h2>Part 1: Secure Record Insertion</h2>
+    <p>This web interface demonstrates Task 1 and Task 2: record creation, RSA digital signing, signature verification, consensus voting, and local storage.</p>
+
+    <form method="POST">
+        <label>Item ID:</label>
+        <input type="text" name="item_id" value="004"><br>
+
+        <label>Quantity:</label>
+        <input type="text" name="quantity" value="12"><br>
+
+        <label>Price:</label>
+        <input type="text" name="price" value="18"><br>
+
+        <label>Location:</label>
+        <select name="location">
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+        </select><br><br>
+
+        <label>Origin Node:</label>
+        <select name="origin_node">
+            <option value="Inventory A">Inventory A</option>
+            <option value="Inventory B">Inventory B</option>
+            <option value="Inventory C">Inventory C</option>
+            <option value="Inventory D">Inventory D</option>
+        </select><br><br>
+
+        <button type="submit">Submit New Record</button>
+    </form>
+
+    {% if output %}
+
+    <h2>Task 1: Digital Signature-Based Record Authentication</h2>
+
+    <div class="box">
+        <p><strong>Originating Node:</strong> {{ output.origin_node }}</p>
+        <p><strong>New Record:</strong> {{ output.record }}</p>
+        <p><strong>SHA-256 Hash Hex:</strong> {{ output.hash_hex }}</p>
+        <p><strong>Hash Integer:</strong> {{ output.hash_int }}</p>
+        <p><strong>RSA Signature:</strong> {{ output.signature }}</p>
+    </div>
+
+    <h3>RSA Components for Origin Node</h3>
+    <table>
+        <tr>
+            <th>Component</th>
+            <th>Value</th>
+        </tr>
+        <tr>
+            <td>p</td>
+            <td>{{ output.rsa_components.p }}</td>
+        </tr>
+        <tr>
+            <td>q</td>
+            <td>{{ output.rsa_components.q }}</td>
+        </tr>
+        <tr>
+            <td>e</td>
+            <td>{{ output.rsa_components.e }}</td>
+        </tr>
+        <tr>
+            <td>n = p × q</td>
+            <td>{{ output.rsa_components.n }}</td>
+        </tr>
+        <tr>
+            <td>φ(n) = (p − 1)(q − 1)</td>
+            <td>{{ output.rsa_components.phi }}</td>
+        </tr>
+        <tr>
+            <td>d = e⁻¹ mod φ(n)</td>
+            <td>{{ output.rsa_components.d }}</td>
+        </tr>
+    </table>
+
+    <h3>Signature Verification by Inventory Nodes</h3>
+    <table>
+        <tr>
+            <th>Node</th>
+            <th>Verification Result</th>
+            <th>Recovered Hash</th>
+        </tr>
+
+        {% for node, result in output.verification_results.items() %}
+        <tr>
+            <td>{{ node }}</td>
+            <td>
+                {% if result.valid %}
+                    <span class="accept">VALID</span>
+                {% else %}
+                    <span class="reject">INVALID</span>
+                {% endif %}
+            </td>
+            <td>{{ result.recovered_hash }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h2>Task 2: Consensus Protocol Integration</h2>
+
+    <p>The selected consensus mechanism is a simplified permissioned majority vote. Since there are four known inventory nodes, the record is accepted only if at least three out of four nodes vote ACCEPT.</p>
+
+    <table>
+        <tr>
+            <th>Inventory Node</th>
+            <th>Vote</th>
+        </tr>
+
+        {% for node, vote in output.votes.items() %}
+        <tr>
+            <td>{{ node }}</td>
+            <td>
+                {% if vote == "ACCEPT" %}
+                    <span class="accept">{{ vote }}</span>
+                {% else %}
+                    <span class="reject">{{ vote }}</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <div class="box">
+        <p><strong>Accept Votes:</strong> {{ output.accept_count }} / 4</p>
+
+        {% if output.consensus_result %}
+            <p><strong>Consensus Result:</strong> <span class="accept">ACCEPTED</span></p>
+            <p>The record has been stored in all inventory nodes.</p>
+        {% else %}
+            <p><strong>Consensus Result:</strong> <span class="reject">REJECTED</span></p>
+            <p>The record was not stored.</p>
+        {% endif %}
+    </div>
+
+    {% if output.storage_data %}
+    <h3>Local Storage After Consensus</h3>
+    <table>
+        <tr>
+            <th>Inventory Node</th>
+            <th>Stored Records</th>
+        </tr>
+
+        {% for node, records in output.storage_data.items() %}
+        <tr>
+            <td>{{ node }}</td>
+            <td>{{ records }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    {% endif %}
+
+</div>
+</body>
+</html>
