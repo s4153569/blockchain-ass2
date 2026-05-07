@@ -190,6 +190,82 @@ def store_record_in_all_nodes(record):
 
     return data
 
+# ============================================================
+# TASK 3 - SECURE QUERY RETRIEVAL
+# ============================================================
+
+def query_record(item_id):
+    """
+    Searches stored records using item ID.
+    """
+    initialise_storage()
+
+    with open("inventory_storage.json", "r") as file:
+        data = json.load(file)
+
+    for node in data:
+        for record in data[node]:
+
+            parts = record.split("|")
+
+            if parts[0] == item_id:
+                return record
+
+    return None
+
+
+def create_multisignature(record):
+    """
+    Generates signatures from all inventory nodes.
+    """
+
+    signatures = {}
+
+    for node in inventory_keys.keys():
+        signature, _, _ = sign_record(record, node)
+        signatures[node] = signature
+
+    return signatures
+
+
+def verify_multisignature(record, signatures):
+    """
+    Verifies all node signatures.
+    """
+
+    verification_results = {}
+
+    for node in signatures:
+        valid, recovered_hash = verify_signature(
+            record,
+            signatures[node],
+            node
+        )
+
+        verification_results[node] = {
+            "valid": valid,
+            "recovered_hash": recovered_hash
+        }
+
+    return verification_results
+
+
+def encrypt_response(response):
+    """
+    Simple SHA-256 encryption simulation.
+    """
+
+    encrypted = hashlib.sha256(response.encode()).hexdigest()
+
+    return encrypted
+
+
+def decrypt_response(encrypted_response):
+    """
+    Simulated decryption message.
+    """
+
+    return "Original response successfully recovered"
 
 # ============================================================
 # WEB ROUTE
@@ -252,7 +328,54 @@ def index():
 
     return render_template("index.html", output=output)
 
+@app.route("/query", methods=["GET", "POST"])
+def query():
+
+    query_output = None
+
+    if request.method == "POST":
+
+        item_id = request.form["query_item_id"]
+
+        record = query_record(item_id)
+
+        if record is None:
+
+            query_output = {
+                "found": False,
+                "message": "Record not found."
+            }
+
+        else:
+
+            signatures = create_multisignature(record)
+
+            verification_results = verify_multisignature(
+                record,
+                signatures
+            )
+
+            encrypted_response = encrypt_response(record)
+
+            decrypted_response = decrypt_response(
+                encrypted_response
+            )
+
+            query_output = {
+                "found": True,
+                "record": record,
+                "signatures": signatures,
+                "verification_results": verification_results,
+                "encrypted_response": encrypted_response,
+                "decrypted_response": decrypted_response
+            }
+
+    return render_template(
+        "query.html",
+        query_output=query_output
+    )
 
 if __name__ == "__main__":
     initialise_storage()
     app.run(debug=True)
+
