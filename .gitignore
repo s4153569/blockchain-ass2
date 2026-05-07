@@ -1,3 +1,7 @@
 __pycache__/
 .DS_Store
 inventory_storage.json
+.venv/
+__pycache__/
+main_assignment/__pycache__/
+main_assignment/inventory_storage.json

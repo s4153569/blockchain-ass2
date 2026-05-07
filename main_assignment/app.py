@@ -5,10 +5,7 @@ import os
 
 app = Flask(__name__)
 
-# ============================================================
-# RSA KEY PARAMETERS FROM LIST OF KEYS
-# ============================================================
-
+# RSA key values from the assignment key list
 inventory_keys = {
     "Inventory A": {
         "p": 1210613765735147311106936311866593978079938707,
@@ -32,16 +29,10 @@ inventory_keys = {
     }
 }
 
-
-# ============================================================
-# RSA KEY GENERATION FUNCTIONS
-# ============================================================
+# RSA helper functions
 
 def generate_rsa_components(node_name):
-    """
-    Generates n, phi, and d from p, q, and e.
-    These values are required for RSA digital signatures.
-    """
+    # Calculate the RSA values used for signing and verifying
     p = inventory_keys[node_name]["p"]
     q = inventory_keys[node_name]["q"]
     e = inventory_keys[node_name]["e"]
@@ -72,10 +63,7 @@ def hash_record(record):
 
 
 def sign_record(record, origin_node):
-    """
-    Signs the record using the private key of the origin node.
-    signature = hash^d mod n
-    """
+    # Sign the record hash using the selected inventory node
     rsa = generate_rsa_components(origin_node)
     hash_hex, hash_int = hash_record(record)
 
@@ -96,11 +84,7 @@ def verify_signature(record, signature, origin_node):
 
     return recovered_hash == hash_int, recovered_hash
 
-
-# ============================================================
-# SIMPLE RECORD VALIDATION
-# ============================================================
-
+# Checks the basic record fields before consensus
 def validate_record_format(item_id, quantity, price, location):
     """
     Checks whether the submitted inventory record has a valid format.
@@ -120,10 +104,7 @@ def validate_record_format(item_id, quantity, price, location):
     return True
 
 
-# ============================================================
-# CONSENSUS MECHANISM
-# ============================================================
-
+# Runs a simple 3-out-of-4 majority vote
 def run_consensus(record, signature, origin_node, item_id, quantity, price, location):
     """
     Simplified permissioned majority consensus.
@@ -151,10 +132,7 @@ def run_consensus(record, signature, origin_node, item_id, quantity, price, loca
     return votes, accept_count, consensus_result
 
 
-# ============================================================
-# LOCAL STORAGE
-# ============================================================
-
+# Local JSON storage
 def initialise_storage():
     """
     Creates a JSON file to simulate local storage for each inventory node.
@@ -190,10 +168,7 @@ def store_record_in_all_nodes(record):
 
     return data
 
-# ============================================================
-# TASK 3 - SECURE QUERY RETRIEVAL
-# ============================================================
-
+# Task 3 query section
 def query_record(item_id):
     """
     Searches stored records using item ID.
@@ -267,10 +242,7 @@ def decrypt_response(encrypted_response):
 
     return "Original response successfully recovered"
 
-# ============================================================
-# WEB ROUTE
-# ============================================================
-
+# Web routes
 @app.route("/", methods=["GET", "POST"])
 def index():
     output = None
