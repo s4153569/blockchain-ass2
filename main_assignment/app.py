@@ -169,10 +169,59 @@ def store_record_in_all_nodes(record):
     return data
 
 # Task 3 query section
+# Task 3 query section - Harn-style multisignature + RSA encryption
+
+pkg_key = {
+    "p": 1004162036461488639338597000466705179253226703,
+    "q": 950133741151267522116252385927940618264103623,
+    "e": 973028207197278907211
+}
+
+procurement_officer_key = {
+    "p": 1080954735722463992988394149602856332100628417,
+    "q": 1158106283320086444890911863299879973542293243,
+    "e": 106506253943651610547613
+}
+
+inventory_identity_values = {
+    "Inventory A": 126,
+    "Inventory B": 127,
+    "Inventory C": 128,
+    "Inventory D": 129
+}
+
+inventory_random_values = {
+    "Inventory A": 621,
+    "Inventory B": 721,
+    "Inventory C": 821,
+    "Inventory D": 921
+}
+
+
+def setup_key_components(key):
+    p = key["p"]
+    q = key["q"]
+    e = key["e"]
+
+    n = p * q
+    phi = (p - 1) * (q - 1)
+    d = pow(e, -1, phi)
+
+    return {
+        "p": p,
+        "q": q,
+        "e": e,
+        "n": n,
+        "phi": phi,
+        "d": d
+    }
+
+
+pkg_components = setup_key_components(pkg_key)
+procurement_components = setup_key_components(procurement_officer_key)
+
+
 def query_record(item_id):
-    """
-    Searches stored records using item ID.
-    """
     initialise_storage()
 
     with open("inventory_storage.json", "r") as file:
@@ -180,7 +229,6 @@ def query_record(item_id):
 
     for node in data:
         for record in data[node]:
-
             parts = record.split("|")
 
             if parts[0] == item_id:
@@ -189,37 +237,107 @@ def query_record(item_id):
     return None
 
 
+def hash_message_for_multisig(message, combined_commitment):
+    data = message + str(combined_commitment)
+    hash_hex = hashlib.sha256(data.encode()).hexdigest()
+    return int(hash_hex, 16) % pkg_components["n"]
+
+
 def create_multisignature(record):
     """
-    Generates signatures from all inventory nodes.
+    Harn-style identity-based multi-signature process.
+    Each inventory node creates a partial signature.
+    Partial signatures are then aggregated into one combined signature.
     """
 
-    signatures = {}
+    commitments = {}
+    combined_commitment = 1
 
-    for node in inventory_keys.keys():
-        signature, _, _ = sign_record(record, node)
-        signatures[node] = signature
+    for node in inventory_identity_values:
+        random_value = inventory_random_values[node]
 
-    return signatures
+        commitment = pow(
+            random_value,
+            pkg_components["e"],
+            pkg_components["n"]
+        )
+
+        commitments[node] = commitment
+        combined_commitment = (
+            combined_commitment * commitment
+        ) % pkg_components["n"]
+
+    challenge = hash_message_for_multisig(record, combined_commitment)
+
+    partial_signatures = {}
+    combined_signature = 1
+
+    for node in inventory_identity_values:
+        identity = inventory_identity_values[node]
+        random_value = inventory_random_values[node]
+
+        identity_private_key = pow(
+            identity,
+            pkg_components["d"],
+            pkg_components["n"]
+        )
+
+        partial_signature = (
+            identity_private_key *
+            pow(random_value, challenge, pkg_components["n"])
+        ) % pkg_components["n"]
+
+        partial_signatures[node] = partial_signature
+
+        combined_signature = (
+            combined_signature * partial_signature
+        ) % pkg_components["n"]
+
+    return {
+        "partial_signatures": partial_signatures,
+        "combined_signature": combined_signature,
+        "combined_commitment": combined_commitment,
+        "challenge": challenge,
+        "commitments": commitments
+    }
 
 
-def verify_multisignature(record, signatures):
+def verify_multisignature(record, multisig_data):
     """
-    Verifies all node signatures.
+    Verifies the aggregated Harn-style multi-signature.
     """
+
+    combined_signature = multisig_data["combined_signature"]
+    combined_commitment = multisig_data["combined_commitment"]
+    challenge = multisig_data["challenge"]
+
+    left_side = pow(
+        combined_signature,
+        pkg_components["e"],
+        pkg_components["n"]
+    )
+
+    product_of_identities = 1
+
+    for node in inventory_identity_values:
+        product_of_identities = (
+            product_of_identities * inventory_identity_values[node]
+        ) % pkg_components["n"]
+
+    right_side = (
+        product_of_identities *
+        pow(combined_commitment, challenge, pkg_components["n"])
+    ) % pkg_components["n"]
+
+    valid = left_side == right_side
 
     verification_results = {}
 
-    for node in signatures:
-        valid, recovered_hash = verify_signature(
-            record,
-            signatures[node],
-            node
-        )
-
+    for node in inventory_identity_values:
         verification_results[node] = {
             "valid": valid,
-            "recovered_hash": recovered_hash
+            "left_side": left_side,
+            "right_side": right_side
         }
 
     return verification_results
@@ -227,20 +345,47 @@ def verify_multisignature(record, signatures):
 
 def encrypt_response(response):
     """
-    Simple SHA-256 encryption simulation.
+    RSA encryption using Procurement Officer public key.
+    The response is split into blocks so it can be safely encrypted.
     """
 
-    encrypted = hashlib.sha256(response.encode()).hexdigest()
+    n = procurement_components["n"]
+    e = procurement_components["e"]
 
-    return encrypted
+    block_size = (n.bit_length() // 8) - 1
+    response_bytes = response.encode()
+
+    encrypted_blocks = []
+
+    for i in range(0, len(response_bytes), block_size):
+        block = response_bytes[i:i + block_size]
+        message_int = int.from_bytes(block, byteorder="big")
+
+        cipher_int = pow(message_int, e, n)
+        encrypted_blocks.append(cipher_int)
+
+    return encrypted_blocks
 
 
 def decrypt_response(encrypted_response):
     """
-    Simulated decryption message.
+    RSA decryption using Procurement Officer private key.
     """
 
-    return "Original response successfully recovered"
+    n = procurement_components["n"]
+    d = procurement_components["d"]
+
+    decrypted_bytes = b""
+
+    for cipher_int in encrypted_response:
+        message_int = pow(cipher_int, d, n)
+
+        block_length = (message_int.bit_length() + 7) // 8
+        block = message_int.to_bytes(block_length, byteorder="big")
+
+        decrypted_bytes += block
+
+    return decrypted_bytes.decode()
 
 # Web routes
 @app.route("/", methods=["GET", "POST"])

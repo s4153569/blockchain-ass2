@@ -31,8 +31,14 @@
             margin-top: 35px;
         }
 
+        h3 {
+            color: #444;
+            margin-top: 25px;
+        }
+
         p {
             line-height: 1.6;
+            word-wrap: break-word;
         }
 
         input {
@@ -75,6 +81,7 @@
 
         .signature-line {
             margin-bottom: 12px;
+            word-wrap: break-word;
         }
 
     </style>
@@ -91,8 +98,9 @@
 
         <p>
             This web interface demonstrates secure query retrieval,
-            multi-signature approval, signature verification,
-            and encrypted response delivery.
+            Harn-style multi-signature approval,
+            signature verification,
+            and RSA encrypted response delivery.
         </p>
 
         <div class="nav-link">
@@ -126,14 +134,44 @@
                     {{ query_output.record }}
                 </div>
 
-                <h2>Multi-Signatures</h2>
+                <h2>Multi-Signature Details</h2>
 
                 <div class="result-box">
 
-                    {% for node, signature in query_output.signatures.items() %}
+                    <h3>Partial Signatures</h3>
+
+                    {% for node, signature in query_output.signatures.partial_signatures.items() %}
 
                         <div class="signature-line">
                             <strong>{{ node }}</strong>: {{ signature }}
+                        </div>
+
+                    {% endfor %}
+
+                    <h3>Combined Signature</h3>
+
+                    <p>
+                        {{ query_output.signatures.combined_signature }}
+                    </p>
+
+                    <h3>Combined Commitment</h3>
+
+                    <p>
+                        {{ query_output.signatures.combined_commitment }}
+                    </p>
+
+                    <h3>Challenge Value</h3>
+
+                    <p>
+                        {{ query_output.signatures.challenge }}
+                    </p>
+
+                    <h3>Node Commitments</h3>
+
+                    {% for node, commitment in query_output.signatures.commitments.items() %}
+
+                        <div class="signature-line">
+                            <strong>{{ node }}</strong>: {{ commitment }}
                         </div>
 
                     {% endfor %}
@@ -155,16 +193,24 @@
 
                 </div>
 
-                <h2>Encrypted Response</h2>
+                <h2>RSA Encrypted Response</h2>
 
                 <div class="result-box">
-                    {{ query_output.encrypted_response }}
+
+                    <p>
+                        {{ query_output.encrypted_response }}
+                    </p>
+
                 </div>
 
-                <h2>Decrypted Response</h2>
+                <h2>Recovered Decrypted Response</h2>
 
                 <div class="result-box">
-                    {{ query_output.decrypted_response }}
+
+                    <p>
+                        {{ query_output.decrypted_response }}
+                    </p>
+
                 </div>
 
             {% else %}
