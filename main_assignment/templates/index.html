@@ -232,9 +232,10 @@
         {% if output.consensus_result %}
             <p><strong>Consensus Result:</strong> <span class="accept">ACCEPTED</span></p>
             <p>The record has been stored in all inventory nodes.</p>
-        {% else %}
+            {% else %}
             <p><strong>Consensus Result:</strong> <span class="reject">REJECTED</span></p>
-            <p>The record was not stored.</p>
+            <p><strong>Submitted Record:</strong> {{ output.record }}</p>
+            <p>The record failed validation or signature checking, so it was not stored.</p>
         {% endif %}
     </div>
 
