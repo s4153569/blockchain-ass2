@@ -168,7 +168,6 @@ def store_record_in_all_nodes(record):
 
     return data
 
-# Task 3 query section
 # Task 3 query section - Harn-style multisignature + RSA encryption
 
 pkg_key = {
