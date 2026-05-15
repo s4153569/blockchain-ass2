@@ -9,6 +9,8 @@ The system demonstrates secure record insertion in a distributed inventory envir
 - Signature verification
 - Simplified permissioned majority consensus
 - Local record storage across inventory nodes
+- Harn-style multi-signature approval
+- RSA encrypted response delivery
 
 ## Project Structure
 
